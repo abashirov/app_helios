@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Логика перенаправления
     let timeLeft = 5;
-    const targetChannel = "https://max.ru/my_channel_example"; // Целевой канал
+    const targetChannel = "https://max.ru/join/wm1il1om-Sp_vehqDQtY7SdftryQ-kXYo-twYEm4-8Y"; // Целевой канал
     
     // Активация тактильного отклика при загрузке (если поддерживается)
     if (webApp?.HapticFeedback) {
