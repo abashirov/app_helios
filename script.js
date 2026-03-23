@@ -66,46 +66,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Логика перенаправления
-    let timeLeft = 5;
-    const targetChannel = "https://max.ru/join/wm1il1om-Sp_vehqDQtY7SdftryQ-kXYo-twYEm4-8Y"; // Целевой канал
-    
-    // Активация тактильного отклика при загрузке (если поддерживается)
-    if (webApp?.HapticFeedback) {
-        try {
-            webApp.HapticFeedback.notificationOccurred('success');
-        } catch (e) {
-            console.log("HapticFeedback error", e);
+    const TOTAL_SECONDS = 5;
+    let timeLeft = TOTAL_SECONDS;
+    const targetChannel = "https://max.ru/join/wm1il1om-Sp_vehqDQtY7SdftryQ-kXYo-twYEm4-8Y";
+
+    // Функция редиректа
+    function doRedirect() {
+        // Внутри MAX — используем нативный метод
+        if (webApp && typeof webApp.openMaxLink === 'function') {
+            webApp.openMaxLink(targetChannel);
         }
+        // Надёжный фолбэк (браузер / GitHub Pages preview)
+        window.location.href = targetChannel;
     }
 
-    // Анимация прогресс-бара 100% к 0%
-    elProgressFill.style.transition = 'width 1s linear';
-    elProgressFill.style.width = '100%';
+    // Тактильный отклик при загрузке
+    if (webApp?.HapticFeedback) {
+        try { webApp.HapticFeedback.notificationOccurred('success'); } catch(e) {}
+    }
 
+    // Прогресс-бар: сразу выставляем 100% без анимации, затем включаем transition
+    elProgressFill.style.transition = 'none';
+    elProgressFill.style.width = '100%';
+    // Небольшой таймаут, чтобы браузер применил начальное значение до старта анимации
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            elProgressFill.style.transition = `width ${TOTAL_SECONDS}s linear`;
+            elProgressFill.style.width = '0%';
+        });
+    });
+
+    // Счётчик — обновляем каждую секунду
     const timer = setInterval(() => {
         timeLeft -= 1;
         elCountdown.textContent = timeLeft;
-        
-        // Обновление прогресс бара
-        const percent = (timeLeft / 5) * 100;
-        elProgressFill.style.width = `${percent}%`;
 
-        // Тактильный фидбэк на каждую секунду
-        if (webApp?.HapticFeedback && timeLeft > 0) {
-            try {
-                webApp.HapticFeedback.impactOccurred('light');
-            } catch(e) {}
+        // Тактильный фидбэк на каждый тик
+        if (webApp?.HapticFeedback) {
+            try { webApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
         }
 
         if (timeLeft <= 0) {
             clearInterval(timer);
-            // Перенаправление с использованием MAX Bridge API
-            if (webApp && typeof webApp.openMaxLink === 'function') {
-                webApp.openMaxLink(targetChannel);
-            } else {
-                // Фолбэк для тестов вне приложения
-                window.location.href = targetChannel;
-            }
+            doRedirect();
         }
     }, 1000);
 });
