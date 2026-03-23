@@ -24,6 +24,7 @@ desktop.ini
 .gemini/
 .gemini
 _gemini/
+GEMINI.md
 
 # Node
 node_modules/
