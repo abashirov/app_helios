@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MAX Welcome</title>
+    <script src="https://st.max.ru/js/max-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="glass-card">
+            <div class="header">
+                <div class="avatar-container">
+                    <img id="userAvatar" src="" alt="Avatar" style="display: none;" />
+                    <div id="avatarPlaceholder" class="avatar-placeholder"></div>
+                </div>
+                <h1 id="greeting">Добро пожаловать!</h1>
+                <p id="username" class="subtitle">Загрузка данных...</p>
+            </div>
+
+            <div class="info-section">
+                <div class="info-item">
+                    <span class="label">ID Пользователя:</span>
+                    <span class="val" id="userId">-</span>
+                </div>
+                <div class="info-item highlight">
+                    <span class="label">Параметр запуска (payload):</span>
+                    <span class="val" id="startParam">Не передано</span>
+                </div>
+            </div>
+
+            <div class="redirect-section">
+                <p>Перенаправление на канал через <span id="countdown">5</span> сек...</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
