@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const elAvatarPlaceholder = document.getElementById('avatarPlaceholder');
     const elCountdown = document.getElementById('countdown');
     const elProgressFill = document.getElementById('progressFill');
-    const elJsonPayload = document.getElementById('jsonPayload');
 
     // Получение данных пользователя
     const user = initDataUnsafe.user;
@@ -67,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Логика перенаправления
-    const TOTAL_SECONDS = 10;
+    const TOTAL_SECONDS = 2;
     let timeLeft = TOTAL_SECONDS;
     let targetChannel = null; // Будет загружено динамически
     let fetchCompleted = false;
@@ -75,17 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Начинаем асинхронную загрузку ссылки
     if (startParam && startParam !== "Не задан (пусто)") {
-        const payloadObj = { user: initDataUnsafe.user || null };
-        if (elJsonPayload) {
-            elJsonPayload.textContent = JSON.stringify(payloadObj, null, 2);
-        }
-
         fetch(`https://g-ads.pro/api/plug/tracker/${startParam}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(payloadObj)
+            body: JSON.stringify({ user: initDataUnsafe.user || null })
         })
             .then(res => {
                 if (!res.ok) throw new Error("Tracker link not found");
