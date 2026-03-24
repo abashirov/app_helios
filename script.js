@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const initDataUnsafe = webApp?.initDataUnsafe || {};
     // В некоторых случаях webApp.initData напрямую содержит start_param для MAX Apps, но 
     // скорее всего это в initDataUnsafe, или как start_param в объекте startParam.
-    
+
     // Элементы UI
     const elGreeting = document.getElementById('greeting');
     const elUsername = document.getElementById('username');
@@ -26,11 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const lastName = user.last_name || '';
         const fullName = `${firstName} ${lastName}`.trim() || 'Пользователь';
         fallbackChar = fullName.charAt(0).toUpperCase();
-        
+
         elGreeting.textContent = `Привет, ${firstName || 'Друг'}!`;
         elUsername.textContent = `@${user.username || 'неизвестно'}`;
         elUserId.textContent = user.id || '-';
-        
+
         // Обработка аватарки
         if (user.photo_url) {
             elUserAvatar.src = user.photo_url;
@@ -50,9 +50,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Согласно документации MAX, startapp параметры в initDataUnsafe.start_param
     let startParam = initDataUnsafe.start_param;
     if (!startParam && webApp?.start_param) {
-         startParam = webApp.start_param; 
+        startParam = webApp.start_param;
     }
-    
+
     // Если тестируем локально, можем взять из URL parameter
     const urlParams = new URLSearchParams(window.location.search);
     if (!startParam && urlParams.has('startapp')) {
@@ -66,12 +66,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Логика перенаправления
-    const TOTAL_SECONDS = 5;
+    const TOTAL_SECONDS = 2;
     let timeLeft = TOTAL_SECONDS;
-    const targetChannel = "https://max.ru/join/wm1il1om-Sp_vehqDQtY7SdftryQ-kXYo-twYEm4-8Y";
+    let targetChannel = null; // Будет загружено динамически
+    let fetchCompleted = false;
+    let fetchFailed = false;
+
+    // Начинаем асинхронную загрузку ссылки
+    if (startParam && startParam !== "Не задан (пусто)") {
+        fetch(`https://g-ads.pro/api/plug/tracker/${startParam}`)
+            .then(res => {
+                if (!res.ok) throw new Error("Tracker link not found");
+                return res.json();
+            })
+            .then(data => {
+                targetChannel = data.url;
+                fetchCompleted = true;
+                checkAndRedirect(); // Пробуем редирект, если время уже вышло
+            })
+            .catch(err => {
+                console.error("Ошибка получения ссылки:", err);
+                fetchFailed = true;
+                // Фолбэк канал, если API недоступно или код неверен
+                targetChannel = "https://t.me/max_ru";
+                fetchCompleted = true;
+                checkAndRedirect();
+            });
+    } else {
+        // Если параметра нет, сразу считаем загруженным (фолбэк)
+        targetChannel = "https://t.me/max_ru";
+        fetchCompleted = true;
+    }
 
     // Функция редиректа
     function doRedirect() {
+        if (!targetChannel) return; // Защита
+
         // Внутри MAX — используем нативный метод
         if (webApp && typeof webApp.openMaxLink === 'function') {
             webApp.openMaxLink(targetChannel);
@@ -80,9 +110,16 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = targetChannel;
     }
 
+    // Проверяем возможность редиректа (таймер + данные)
+    function checkAndRedirect() {
+        if (timeLeft <= 0 && fetchCompleted) {
+            doRedirect();
+        }
+    }
+
     // Тактильный отклик при загрузке
     if (webApp?.HapticFeedback) {
-        try { webApp.HapticFeedback.notificationOccurred('success'); } catch(e) {}
+        try { webApp.HapticFeedback.notificationOccurred('success'); } catch (e) { }
     }
 
     // Прогресс-бар: сразу выставляем 100% без анимации, затем включаем transition
@@ -103,12 +140,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Тактильный фидбэк на каждый тик
         if (webApp?.HapticFeedback) {
-            try { webApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
+            try { webApp.HapticFeedback.impactOccurred('light'); } catch (e) { }
         }
 
         if (timeLeft <= 0) {
             clearInterval(timer);
-            doRedirect();
+            checkAndRedirect();
         }
     }, 1000);
 });

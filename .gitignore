@@ -44,3 +44,9 @@ yarn-error.log*
 dist/
 build/
 out/
+
+# Bot Subproject
+max_bot/
+.agents/
+ROADMAP.md
+max_bot
