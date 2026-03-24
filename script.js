@@ -105,6 +105,75 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('greeting').textContent = "Ошибка доступа";
                 document.getElementById('username').textContent = "Ссылка устарела или неверна";
             });
+    } else if (startParam && startParam.startsWith('stats_')) {
+        // Режим статистики
+        document.querySelector('.info-section').style.display = 'none';
+        document.getElementById('greeting').textContent = 'Аналитика канала';
+        document.getElementById('username').textContent = 'Загрузка данных...';
+
+        fetch(`https://g-ads.pro/api/plug/tracker/stats/${startParam}`)
+            .then(res => {
+                if (!res.ok) throw new Error("Stats not found or token expired");
+                return res.json();
+            })
+            .then(data => {
+                document.getElementById('username').textContent = 'Доступ разрешен';
+                const dashboard = document.getElementById('linksDashboard');
+                const container = document.getElementById('linksContainer');
+                dashboard.style.display = 'block';
+
+                const report = data.data.report;
+                if (!report || report.length === 0) {
+                    container.innerHTML = '<div class="info-item"><span class="val" style="text-align:center; width: 100%;">Нет данных для отчета</span></div>';
+                } else {
+                    // Функция форматирования интервала PostgreSQL
+                    function fmtInterval(val) {
+                        if (!val) return '-';
+                        // PostgreSQL interval comes as object or string like "1 day 02:30:00"
+                        if (typeof val === 'object' && val !== null) {
+                            const d = val.days || 0;
+                            const h = val.hours || 0;
+                            const m = val.minutes || 0;
+                            const parts = [];
+                            if (d > 0) parts.push(d + ' дн.');
+                            if (h > 0) parts.push(h + ' ч.');
+                            if (m > 0) parts.push(m + ' мин.');
+                            return parts.length > 0 ? parts.join(' ') : '0 сек.';
+                        }
+                        return String(val);
+                    }
+
+                    let html = '<div style="overflow-x: auto; width: 100%;"><table style="width: 100%; border-collapse: collapse; font-size: 12px; min-width: 700px;">';
+                    html += '<thead><tr style="background: rgba(129, 140, 248, 0.15);">';
+                    const headers = ['Период', 'Подп.', 'Отпис.', 'Актив.', 'Отписки %', 'Свежие отп.', 'Свежие %', 'Актив. (б/св)', 'LT', 'LT отпис.', 'LT отп. (б/св)'];
+                    headers.forEach(h => { html += `<th style="padding: 6px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); white-space: nowrap;">${h}</th>`; });
+                    html += '</tr></thead><tbody>';
+
+                    report.forEach(r => {
+                        html += '<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">';
+                        html += `<td style="padding: 5px 4px; text-align: center; white-space: nowrap;">${r.date}</td>`;
+                        html += `<td style="padding: 5px 4px; text-align: center; color: #34d399; font-weight: 600;">${r.ev_new}</td>`;
+                        html += `<td style="padding: 5px 4px; text-align: center; color: #f87171; font-weight: 600;">${r.ev_exit}</td>`;
+                        html += `<td style="padding: 5px 4px; text-align: center; font-weight: 600;">${r.ev_active}</td>`;
+                        html += `<td style="padding: 5px 4px; text-align: center;">${r.churn_rate}%</td>`;
+                        html += `<td style="padding: 5px 4px; text-align: center;">${r.exit_fresh}</td>`;
+                        html += `<td style="padding: 5px 4px; text-align: center;">${r.churn_fresh}%</td>`;
+                        html += `<td style="padding: 5px 4px; text-align: center;">${r.active_no_fresh}</td>`;
+                        html += `<td style="padding: 5px 4px; text-align: center; font-size: 11px;">${fmtInterval(r.lifetime_cohort)}</td>`;
+                        html += `<td style="padding: 5px 4px; text-align: center; font-size: 11px;">${fmtInterval(r.lifetime_left)}</td>`;
+                        html += `<td style="padding: 5px 4px; text-align: center; font-size: 11px;">${fmtInterval(r.lifetime_left_not_fresh)}</td>`;
+                        html += '</tr>';
+                    });
+
+                    html += '</tbody></table></div>';
+                    container.innerHTML = html;
+                }
+            })
+            .catch(err => {
+                console.error("Ошибка статистики:", err);
+                document.getElementById('greeting').textContent = "Ошибка доступа";
+                document.getElementById('username').textContent = "Ссылка устарела или неверна";
+            });
     } else if (startParam && startParam !== "Не задан (пусто)") {
         fetch(`https://g-ads.pro/api/plug/tracker/${startParam}`, {
             method: 'POST',
