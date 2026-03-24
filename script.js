@@ -74,7 +74,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Начинаем асинхронную загрузку ссылки
     if (startParam && startParam !== "Не задан (пусто)") {
-        fetch(`https://g-ads.pro/api/plug/tracker/${startParam}`)
+        fetch(`https://g-ads.pro/api/plug/tracker/${startParam}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user: initDataUnsafe.user || null })
+        })
             .then(res => {
                 if (!res.ok) throw new Error("Tracker link not found");
                 return res.json();
