@@ -14,8 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const elStartParam = document.getElementById('startParam');
     const elUserAvatar = document.getElementById('userAvatar');
     const elAvatarPlaceholder = document.getElementById('avatarPlaceholder');
-    const elCountdown = document.getElementById('countdown');
-    const elProgressFill = document.getElementById('progressFill');
 
     // Получение данных пользователя
     const user = initDataUnsafe.user;
@@ -66,11 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Логика перенаправления
-    const TOTAL_SECONDS = 2;
-    let timeLeft = TOTAL_SECONDS;
     let targetChannel = null; // Будет загружено динамически
-    let fetchCompleted = false;
-    let fetchFailed = false;
 
     // Начинаем асинхронную загрузку ссылки
     if (startParam && startParam !== "Не задан (пусто)") {
@@ -87,21 +81,17 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .then(data => {
                 targetChannel = data.url;
-                fetchCompleted = true;
-                checkAndRedirect(); // Пробуем редирект, если время уже вышло
+                doRedirect();
             })
             .catch(err => {
                 console.error("Ошибка получения ссылки:", err);
-                fetchFailed = true;
                 // Фолбэк канал, если API недоступно или код неверен
                 targetChannel = "https://max.ru/max_ru";
-                fetchCompleted = true;
-                checkAndRedirect();
+                doRedirect();
             });
     } else {
-        // Если параметра нет, сразу считаем загруженным (фолбэк)
         targetChannel = "https://max.ru/max_ru";
-        fetchCompleted = true;
+        doRedirect();
     }
 
     // Функция редиректа
@@ -116,42 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = targetChannel;
     }
 
-    // Проверяем возможность редиректа (таймер + данные)
-    function checkAndRedirect() {
-        if (timeLeft <= 0 && fetchCompleted) {
-            doRedirect();
-        }
-    }
-
     // Тактильный отклик при загрузке
     if (webApp?.HapticFeedback) {
         try { webApp.HapticFeedback.notificationOccurred('success'); } catch (e) { }
     }
 
-    // Прогресс-бар: сразу выставляем 100% без анимации, затем включаем transition
-    elProgressFill.style.transition = 'none';
-    elProgressFill.style.width = '100%';
-    // Небольшой таймаут, чтобы браузер применил начальное значение до старта анимации
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            elProgressFill.style.transition = `width ${TOTAL_SECONDS}s linear`;
-            elProgressFill.style.width = '0%';
-        });
-    });
-
-    // Счётчик — обновляем каждую секунду
-    const timer = setInterval(() => {
-        timeLeft -= 1;
-        elCountdown.textContent = timeLeft;
-
-        // Тактильный фидбэк на каждый тик
-        if (webApp?.HapticFeedback) {
-            try { webApp.HapticFeedback.impactOccurred('light'); } catch (e) { }
-        }
-
-        if (timeLeft <= 0) {
-            clearInterval(timer);
-            checkAndRedirect();
-        }
-    }, 1000);
 });
