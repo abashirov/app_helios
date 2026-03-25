@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     container.innerHTML = links.map(l => `
                         <div class="info-item" style="flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px;">
                             <strong style="color: var(--accent); font-size: 16px;">${l.name}</strong>
-                            <div style="font-size: 12px; color: var(--text-muted); font-family: monospace; background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 6px; width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis;">startapp: https://max.ru/id1655460755_bo?${l.startapp_hash}</div>
+                            <div style="font-size: 12px; color: var(--text-muted); font-family: monospace; background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 6px; width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis;">startapp: https://max.ru/id1655460755_bot?startapp=${l.startapp_hash}</div>
                             <div style="display: flex; gap: 10px; margin-top: 4px;">
                                 <span style="background: rgba(129, 140, 248, 0.15); padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: 600;">🖱 ${l.clicks || 0}</span>
                                 <span style="background: rgba(52, 211, 153, 0.15); padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #34d399;">👥 ${l.subscriptions || 0}</span>
