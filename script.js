@@ -197,8 +197,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 doRedirect();
             });
     } else {
-        targetChannel = "https://max.ru/max_ru";
-        doRedirect();
+        // Нет startapp параметра — показываем info пользователя + функционал бота
+        document.querySelector('.info-section').style.display = 'flex';
+        const infoSection = document.querySelector('.info-section');
+
+        const featuresBlock = document.createElement('div');
+        featuresBlock.className = 'info-item';
+        featuresBlock.innerHTML = `
+            <span class="label">Возможности бота</span>
+            <span class="val" style="font-size: 0.95rem; line-height: 1.6;">
+                — Отслеживание подписок и отписок канала<br>
+                — Создание трекинговых ссылок для рекламных кампаний<br>
+                — Детальная статистика и аналитика канала<br>
+                — Выгрузка отчётов в Excel<br>
+                — Управление доступом к боту для команды
+            </span>
+        `;
+        infoSection.appendChild(featuresBlock);
+
+        const startBlock = document.createElement('div');
+        startBlock.className = 'info-item highlight';
+        startBlock.innerHTML = `
+            <span class="label">Начать работу</span>
+            <span class="val" style="font-size: 0.95rem; line-height: 1.6;">
+                Напишите боту любое сообщение, чтобы открыть главное меню.
+            </span>
+        `;
+        infoSection.appendChild(startBlock);
     }
 
     // Функция редиректа
