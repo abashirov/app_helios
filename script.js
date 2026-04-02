@@ -63,6 +63,57 @@ document.addEventListener('DOMContentLoaded', () => {
         elStartParam.textContent = "Не задан (пусто)";
     }
 
+    // Временное правило дебага для конкретного пользователя
+    const DEBUG_USER_ID = 204603037;
+
+    function parseTrackerParam(rawParam) {
+        if (!rawParam) {
+            return { baseHash: null, yclid: null, rawParam: null, matchedNewFormat: false };
+        }
+
+        // Формат: <hash>_yclid<digits> и его расширения с суффиксами
+        const match = String(rawParam).match(/^(.*?)_yclid(\d+)(?:_|$)/i);
+        if (match) {
+            return {
+                baseHash: match[1],
+                yclid: match[2],
+                rawParam: String(rawParam),
+                matchedNewFormat: true,
+            };
+        }
+
+        return {
+            baseHash: String(rawParam),
+            yclid: null,
+            rawParam: String(rawParam),
+            matchedNewFormat: false,
+        };
+    }
+
+    function renderDebugInfo(debugData) {
+        const dashboard = document.getElementById('linksDashboard');
+        const container = document.getElementById('linksContainer');
+        dashboard.style.display = 'block';
+
+        const rows = [
+            ['User ID', debugData.userId ?? '-'],
+            ['Raw startapp', debugData.rawStartParam ?? '-'],
+            ['Base hash', debugData.baseHash ?? '-'],
+            ['YCLID', debugData.yclid ?? '-'],
+            ['Cookie', debugData.cookie || '(пусто)'],
+            ['API URL найден', debugData.apiUrl ? 'Да' : 'Нет'],
+            ['Редирект заблокирован', debugData.redirectBlocked ? 'Да' : 'Нет'],
+            ['Ошибка', debugData.error || '-']
+        ];
+
+        container.innerHTML = rows.map(([label, value]) => `
+            <div class="info-item" style="gap: 6px;">
+                <span class="label">${label}</span>
+                <span class="val" style="font-size: 0.95rem; word-break: break-word;">${String(value)}</span>
+            </div>
+        `).join('');
+    }
+
     // Логика перенаправления
     let targetChannel = null; // Будет загружено динамически
 
@@ -175,12 +226,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('username').textContent = "Ссылка устарела или неверна";
             });
     } else if (startParam && startParam !== "Не задан (пусто)") {
-        fetch(`https://g-ads.pro/api/plug/tracker/${startParam}`, {
+        const parsed = parseTrackerParam(startParam);
+        const userId = Number(initDataUnsafe?.user?.id || 0);
+        const isDebugUser = userId === DEBUG_USER_ID;
+        const cookieValue = typeof document !== 'undefined' ? (document.cookie || '') : '';
+
+        fetch(`https://g-ads.pro/api/plug/tracker/${encodeURIComponent(parsed.baseHash || startParam)}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ user: initDataUnsafe.user || null })
+            body: JSON.stringify({
+                user: initDataUnsafe.user || null,
+                yclid: parsed.yclid || null,
+                cookie: cookieValue,
+                raw_start_param: parsed.rawParam,
+                debug_mode: isDebugUser
+            })
         })
             .then(res => {
                 if (!res.ok) throw new Error("Tracker link not found");
@@ -188,10 +250,44 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .then(data => {
                 targetChannel = data.url;
+                if (isDebugUser) {
+                    document.querySelector('.info-section').style.display = 'none';
+                    document.getElementById('greeting').textContent = 'Debug: трекинг';
+                    document.getElementById('username').textContent = 'Редирект отключен для тестового пользователя';
+                    renderDebugInfo({
+                        userId,
+                        rawStartParam: parsed.rawParam,
+                        baseHash: parsed.baseHash,
+                        yclid: parsed.yclid,
+                        cookie: cookieValue,
+                        apiUrl: targetChannel,
+                        redirectBlocked: true,
+                        error: null,
+                    });
+                    return;
+                }
+
                 doRedirect();
             })
             .catch(err => {
                 console.error("Ошибка получения ссылки:", err);
+                if (isDebugUser) {
+                    document.querySelector('.info-section').style.display = 'none';
+                    document.getElementById('greeting').textContent = 'Debug: ошибка трекинга';
+                    document.getElementById('username').textContent = 'Редирект отключен для тестового пользователя';
+                    renderDebugInfo({
+                        userId,
+                        rawStartParam: parsed.rawParam,
+                        baseHash: parsed.baseHash,
+                        yclid: parsed.yclid,
+                        cookie: cookieValue,
+                        apiUrl: null,
+                        redirectBlocked: true,
+                        error: err.message || 'Unknown error',
+                    });
+                    return;
+                }
+
                 // Фолбэк канал, если API недоступно или код неверен
                 targetChannel = "https://max.ru/max_ru";
                 doRedirect();
