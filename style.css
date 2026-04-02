@@ -30,6 +30,10 @@ body {
     width: 100%;
     max-width: 400px;
     padding: 20px;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .glass-card {
@@ -44,6 +48,24 @@ body {
     display: flex;
     flex-direction: column;
     gap: 24px;
+    width: 100%;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.glass-card::-webkit-scrollbar {
+    width: 8px;
+}
+
+.glass-card::-webkit-scrollbar-thumb {
+    background: rgba(129, 140, 248, 0.45);
+    border-radius: 999px;
+}
+
+.glass-card::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
 }
 
 @keyframes slideUp {
@@ -160,4 +182,14 @@ h1 {
     background: linear-gradient(90deg, var(--accent), #c084fc);
     border-radius: 3px;
     transition: width 1s linear;
+}
+
+@media (max-width: 640px) {
+    .container {
+        padding: 12px;
+    }
+
+    .glass-card {
+        max-height: calc(100vh - 24px);
+    }
 }
