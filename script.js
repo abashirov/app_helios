@@ -136,178 +136,150 @@ document.addEventListener('DOMContentLoaded', () => {
     function showLinksManager(channels) {
         const manager = document.getElementById('linksManager');
         const managerBody = document.getElementById('linksManagerBody');
-        if (!manager || !managerBody) {
-            return;
-        }
+        if (!manager || !managerBody) return;
 
         const normalizedChannels = Array.isArray(channels)
             ? channels.filter(c => Array.isArray(c.links) && c.links.length > 0)
             : [];
-
-        if (!normalizedChannels.length) {
-            return;
-        }
+        if (!normalizedChannels.length) return;
 
         manager.style.display = 'flex';
-        managerBody.innerHTML = normalizedChannels.map((channel) => {
-            const channelTitle = escapeHtml(channel.title || `Канал ${channel.mxChannelId}`);
-            const currentLink = escapeHtml(channel.channelLink || '');
-            const mxChannelId = escapeHtml(channel.mxChannelId || '');
-            const linksRows = channel.links.map((link) => {
-                const linkName = escapeHtml(link.name || 'Без названия');
-                const hash = escapeHtml(link.startappHash || '');
-                const redirect = escapeHtml(link.redirect || '');
-                const linkId = escapeHtml(link.id || '');
-                return `
-                    <li class="manager-link-item" data-link-id="${linkId}">
-                        <div class="manager-link-top">
-                            <span>${linkName}</span>
-                            <span>${hash}</span>
-                        </div>
-                        <label class="manager-label manager-label-small" for="link-redirect-${linkId}">Redirect ссылки (пусто = вести на ссылку канала)</label>
-                        <div class="manager-edit-row manager-edit-row-inline">
-                            <input id="link-redirect-${linkId}" class="manager-input manager-input-compact" type="url" value="${redirect}" placeholder="https://max.ru/... или пусто" />
-                            <button class="manager-save-btn manager-link-save-btn" type="button">Сохранить redirect</button>
-                        </div>
-                        <div class="manager-status manager-link-status" aria-live="polite"></div>
-                    </li>
-                `;
-            }).join('');
 
-            return `
-                <div class="manager-card" data-channel-id="${mxChannelId}">
-                    <div class="manager-head">
-                        <strong>${channelTitle}</strong>
-                        <small>ID: ${mxChannelId}</small>
-                    </div>
-                    <label class="manager-label" for="channel-link-${mxChannelId}">Ссылка канала (только https://max.ru/*)</label>
-                    <div class="manager-edit-row">
-                        <input id="channel-link-${mxChannelId}" class="manager-input" type="url" value="${currentLink}" placeholder="https://max.ru/..." />
-                        <button class="manager-save-btn" type="button">Сохранить</button>
-                    </div>
-                    <div class="manager-status" aria-live="polite"></div>
-                    <ul class="manager-links-list">${linksRows}</ul>
-                </div>
+        const BOT_DEEPLINK_BASE = 'https://max.ru/id1655460755_bot?startapp=';
+
+        function renderChannelList() {
+            managerBody.innerHTML = `
+                <span class="manager-label">\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043a\u0430\u043d\u0430\u043b</span>
+                <ul class="manager-step-list">
+                    ${normalizedChannels.map((ch, idx) => `
+                        <li>
+                            <button class="manager-step-btn" data-idx="${idx}">
+                                <span>${escapeHtml(ch.title || '\u041a\u0430\u043d\u0430\u043b ' + ch.mxChannelId)}</span>
+                                <span class="manager-step-meta">${ch.links.length} \u0441\u0441\u044b\u043b${ch.links.length === 1 ? '\u0430' : ch.links.length < 5 ? '\u0438' : '\u043e\u043a'}</span>
+                            </button>
+                        </li>
+                    `).join('')}
+                </ul>
             `;
-        }).join('');
+            managerBody.querySelectorAll('.manager-step-btn[data-idx]').forEach(btn => {
+                btn.addEventListener('click', () => renderLinkList(Number(btn.getAttribute('data-idx'))));
+            });
+        }
 
-        managerBody.querySelectorAll('.manager-card').forEach((card) => {
-            const channelId = card.getAttribute('data-channel-id') || '';
-            const input = card.querySelector('.manager-input');
-            const button = card.querySelector('.manager-save-btn');
-            const status = card.querySelector('.manager-status');
+        function renderLinkList(channelIdx) {
+            const ch = normalizedChannels[channelIdx];
+            managerBody.innerHTML = `
+                <button class="manager-back-btn" type="button">\u2190 \u041d\u0430\u0437\u0430\u0434</button>
+                <div class="manager-breadcrumb">${escapeHtml(ch.title || '\u041a\u0430\u043d\u0430\u043b ' + ch.mxChannelId)}</div>
+                <span class="manager-label">\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0441\u044b\u043b\u043a\u0443</span>
+                <ul class="manager-step-list">
+                    ${ch.links.map((link, idx) => `
+                        <li>
+                            <button class="manager-step-btn" data-link-idx="${idx}">
+                                <span>${escapeHtml(link.name || '\u0411\u0435\u0437 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044f')}</span>
+                                <span class="manager-step-meta">${link.redirect ? '\u2192 ' + escapeHtml(link.redirect) : '\u0432\u0435\u0434\u0451\u0442 \u043d\u0430 \u043a\u0430\u043d\u0430\u043b'}</span>
+                            </button>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+            managerBody.querySelector('.manager-back-btn').addEventListener('click', renderChannelList);
+            managerBody.querySelectorAll('.manager-step-btn[data-link-idx]').forEach(btn => {
+                btn.addEventListener('click', () => renderLinkEdit(channelIdx, Number(btn.getAttribute('data-link-idx'))));
+            });
+        }
 
-            if (!input || !button || !status) {
-                return;
-            }
+        function renderLinkEdit(channelIdx, linkIdx) {
+            const ch = normalizedChannels[channelIdx];
+            const link = ch.links[linkIdx];
+            const fullUrl = BOT_DEEPLINK_BASE + (link.startappHash || '');
+            const currentRedirect = link.redirect || '';
 
-            button.addEventListener('click', async () => {
-                const nextUrl = String(input.value || '').trim();
-                if (!isAllowedMaxUrl(nextUrl)) {
-                    status.textContent = 'Разрешены только ссылки формата https://max.ru/*';
-                    status.classList.add('error');
-                    status.classList.remove('ok');
+            managerBody.innerHTML = `
+                <button class="manager-back-btn" type="button">\u2190 \u041d\u0430\u0437\u0430\u0434</button>
+                <div class="manager-breadcrumb">${escapeHtml(ch.title || 'Channel')} / ${escapeHtml(link.name || '\u0411\u0435\u0437 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044f')}</div>
+                <span class="manager-label">\u0422\u0440\u0435\u043a\u0438\u043d\u0433\u043e\u0432\u0430\u044f \u0441\u0441\u044b\u043b\u043a\u0430</span>
+                <div class="manager-copyrow">
+                    <span class="manager-copyurl">${escapeHtml(fullUrl)}</span>
+                    <button class="manager-copy-btn" type="button" data-url="${escapeHtml(fullUrl)}">\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c</button>
+                </div>
+                <div class="manager-status manager-copy-status" aria-live="polite"></div>
+                <span class="manager-label" style="margin-top:10px;">Redirect <span style="text-transform:none;font-size:0.78rem;">(\u043f\u0443\u0441\u0442\u043e = \u0432\u0435\u0441\u0442\u0438 \u043d\u0430 \u0441\u0441\u044b\u043b\u043a\u0443 \u043a\u0430\u043d\u0430\u043b\u0430)</span></span>
+                <div class="manager-edit-row manager-edit-row-inline">
+                    <input id="link-redirect-input" class="manager-input manager-input-compact" type="url"
+                        value="${escapeHtml(currentRedirect)}" placeholder="https://max.ru/..." />
+                    <button class="manager-save-btn" id="link-redirect-save" type="button">\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c</button>
+                </div>
+                ${currentRedirect ? `<button class="manager-clear-btn" id="link-redirect-clear" type="button">\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u044c redirect</button>` : ''}
+                <div class="manager-status manager-redirect-status" aria-live="polite"></div>
+            `;
+
+            managerBody.querySelector('.manager-back-btn').addEventListener('click', () => renderLinkList(channelIdx));
+
+            managerBody.querySelector('.manager-copy-btn').addEventListener('click', async (e) => {
+                const url = e.currentTarget.getAttribute('data-url');
+                const copyStatus = managerBody.querySelector('.manager-copy-status');
+                try {
+                    await navigator.clipboard.writeText(url);
+                    copyStatus.textContent = '\u0421\u0441\u044b\u043b\u043a\u0430 \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u0430!';
+                    copyStatus.classList.add('ok');
+                    copyStatus.classList.remove('error');
+                    setTimeout(() => { copyStatus.textContent = ''; copyStatus.classList.remove('ok'); }, 2000);
+                } catch {
+                    copyStatus.textContent = '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u2014 \u0441\u043a\u043e\u043f\u0438\u0440\u0443\u0439\u0442\u0435 \u0432\u0440\u0443\u0447\u043d\u0443\u044e.';
+                    copyStatus.classList.add('error');
+                }
+            });
+
+            const saveRedirect = async (url) => {
+                const redirectStatus = managerBody.querySelector('.manager-redirect-status');
+                if (!isAllowedRedirectUrl(url)) {
+                    redirectStatus.textContent = '\u0420\u0430\u0437\u0440\u0435\u0448\u0435\u043d\u044b \u0442\u043e\u043b\u044c\u043a\u043e https://max.ru/* \u0438\u043b\u0438 \u043f\u0443\u0441\u0442\u043e\u0435 \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435.';
+                    redirectStatus.classList.add('error');
+                    redirectStatus.classList.remove('ok');
                     return;
                 }
-
                 const initData = webApp?.initData || '';
                 if (!initData) {
-                    status.textContent = 'Нет initData для авторизации в Mini App.';
-                    status.classList.add('error');
-                    status.classList.remove('ok');
+                    redirectStatus.textContent = '\u041d\u0435\u0442 initData \u0434\u043b\u044f \u0430\u0432\u0442\u043e\u0440\u0438\u0437\u0430\u0446\u0438\u0438.';
+                    redirectStatus.classList.add('error');
                     return;
                 }
-
-                status.textContent = 'Сохраняем...';
-                status.classList.remove('error', 'ok');
-                button.disabled = true;
+                const saveBtn = managerBody.querySelector('#link-redirect-save');
+                redirectStatus.textContent = '\u0421\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u043c...';
+                redirectStatus.classList.remove('error', 'ok');
+                if (saveBtn) saveBtn.disabled = true;
                 try {
-                    const resp = await fetch(`${API_BASE_URL}/channels/${encodeURIComponent(channelId)}/link`, {
+                    const resp = await fetch(`${API_BASE_URL}/links/${encodeURIComponent(link.id)}/redirect`, {
                         method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Telegram-Init-Data': initData,
-                        },
-                        body: JSON.stringify({ url: nextUrl }),
+                        headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData },
+                        body: JSON.stringify({ url }),
                     });
-
                     if (!resp.ok) {
                         const errText = await resp.text();
-                        throw new Error(errText || 'Не удалось сохранить ссылку.');
+                        throw new Error(errText || '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c redirect.');
                     }
-
-                    status.textContent = 'Ссылка обновлена.';
-                    status.classList.add('ok');
-                    status.classList.remove('error');
-                } catch (error) {
-                    status.textContent = 'Ошибка: ' + (error?.message || 'неизвестно');
-                    status.classList.add('error');
-                    status.classList.remove('ok');
-                } finally {
-                    button.disabled = false;
+                    link.redirect = url || null;
+                    renderLinkEdit(channelIdx, linkIdx);
+                } catch (err) {
+                    if (redirectStatus.isConnected) {
+                        redirectStatus.textContent = '\u041e\u0448\u0438\u0431\u043a\u0430: ' + (err?.message || '\u043d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u043e');
+                        redirectStatus.classList.add('error');
+                        if (saveBtn && saveBtn.isConnected) saveBtn.disabled = false;
+                    }
                 }
+            };
+
+            managerBody.querySelector('#link-redirect-save').addEventListener('click', () => {
+                const input = managerBody.querySelector('#link-redirect-input');
+                saveRedirect(String(input?.value || '').trim());
             });
 
-            card.querySelectorAll('.manager-link-item').forEach((linkItem) => {
-                const linkId = linkItem.getAttribute('data-link-id') || '';
-                const linkInput = linkItem.querySelector('.manager-input-compact');
-                const linkButton = linkItem.querySelector('.manager-link-save-btn');
-                const linkStatus = linkItem.querySelector('.manager-link-status');
+            const clearBtn = managerBody.querySelector('#link-redirect-clear');
+            if (clearBtn) clearBtn.addEventListener('click', () => saveRedirect(''));
+        }
 
-                if (!linkInput || !linkButton || !linkStatus) {
-                    return;
-                }
-
-                linkButton.addEventListener('click', async () => {
-                    const nextRedirect = String(linkInput.value || '').trim();
-                    if (!isAllowedRedirectUrl(nextRedirect)) {
-                        linkStatus.textContent = 'Разрешены только https://max.ru/* или пустое значение.';
-                        linkStatus.classList.add('error');
-                        linkStatus.classList.remove('ok');
-                        return;
-                    }
-
-                    const initData = webApp?.initData || '';
-                    if (!initData) {
-                        linkStatus.textContent = 'Нет initData для авторизации в Mini App.';
-                        linkStatus.classList.add('error');
-                        linkStatus.classList.remove('ok');
-                        return;
-                    }
-
-                    linkStatus.textContent = 'Сохраняем redirect...';
-                    linkStatus.classList.remove('error', 'ok');
-                    linkButton.disabled = true;
-                    try {
-                        const resp = await fetch(`${API_BASE_URL}/links/${encodeURIComponent(linkId)}/redirect`, {
-                            method: 'PATCH',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-Telegram-Init-Data': initData,
-                            },
-                            body: JSON.stringify({ url: nextRedirect }),
-                        });
-
-                        if (!resp.ok) {
-                            const errText = await resp.text();
-                            throw new Error(errText || 'Не удалось сохранить redirect.');
-                        }
-
-                        linkStatus.textContent = nextRedirect
-                            ? 'Redirect обновлён.'
-                            : 'Redirect очищен, используется ссылка канала.';
-                        linkStatus.classList.add('ok');
-                        linkStatus.classList.remove('error');
-                    } catch (error) {
-                        linkStatus.textContent = 'Ошибка: ' + (error?.message || 'неизвестно');
-                        linkStatus.classList.add('error');
-                        linkStatus.classList.remove('ok');
-                    } finally {
-                        linkButton.disabled = false;
-                    }
-                });
-            });
-        });
+        renderChannelList();
     }
 
     async function loadAdminLinksManager() {
