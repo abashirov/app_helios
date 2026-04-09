@@ -145,7 +145,6 @@ document.addEventListener('DOMContentLoaded', () => {
             : [];
 
         if (!normalizedChannels.length) {
-            manager.style.display = 'none';
             return;
         }
 
@@ -312,8 +311,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadAdminLinksManager() {
-        const initData = webApp?.initData || '';
+        const manager = document.getElementById('linksManager');
+        const managerBody = document.getElementById('linksManagerBody');
+        if (!manager || !managerBody) {
+            return;
+        }
+
+        // Show manager with loading state immediately
+        manager.style.display = 'flex';
+        managerBody.innerHTML = '<div class="manager-status" style="padding:8px 0;">Загрузка панели управления...</div>';
+
+        // Try multiple possible initData sources (MAX SDK may expose it differently)
+        const initData = webApp?.initData || webApp?.InitData || webApp?.initDataRaw || '';
+
         if (!initData) {
+            managerBody.innerHTML = '<div class="manager-status error" style="padding:8px 0;">Авторизация недоступна: initData не получен от платформы. Откройте приложение через бота.</div>';
+            console.warn('[LinksManager] webApp.initData is empty. webApp keys:', webApp ? Object.keys(webApp) : 'webApp is null');
             return;
         }
 
@@ -324,14 +337,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     'X-Telegram-Init-Data': initData,
                 },
             });
+
             if (!res.ok) {
+                const errText = await res.text().catch(() => String(res.status));
+                managerBody.innerHTML = `<div class="manager-status error" style="padding:8px 0;">Ошибка загрузки (${res.status}): ${escapeHtml(errText)}</div>`;
                 return;
             }
 
             const data = await res.json();
-            showLinksManager(data?.data?.channels || []);
+            const channels = data?.data?.channels || [];
+
+            if (!channels.length) {
+                managerBody.innerHTML = '<div class="manager-status" style="padding:8px 0;">Вы не являетесь администратором ни одного канала.</div>';
+                return;
+            }
+
+            showLinksManager(channels);
         } catch (error) {
             console.error('Ошибка загрузки панели ссылок:', error);
+            managerBody.innerHTML = `<div class="manager-status error" style="padding:8px 0;">Сетевая ошибка: ${escapeHtml(error?.message || 'неизвестно')}</div>`;
         }
     }
 
