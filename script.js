@@ -542,6 +542,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="val" style="font-size: 0.95rem; line-height: 1.6;">
                 Напишите боту любое сообщение, чтобы открыть главное меню.
             </span>
+             <span class="val" style="font-size: 0.95rem; line-height: 1.6;">
+                v 1.0.0 
+            </span>
         `;
         infoSection.appendChild(startBlock);
     }
