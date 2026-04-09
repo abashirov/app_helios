@@ -184,6 +184,149 @@ h1 {
     transition: width 1s linear;
 }
 
+.links-manager {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 12px;
+}
+
+.manager-title {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.manager-subtitle {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.links-manager-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.manager-card {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(129, 140, 248, 0.25);
+    border-radius: 14px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.manager-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: baseline;
+}
+
+.manager-head strong {
+    font-size: 1rem;
+}
+
+.manager-head small {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.manager-label {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.manager-label-small {
+    font-size: 0.72rem;
+}
+
+.manager-edit-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+}
+
+.manager-input {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(15, 23, 42, 0.65);
+    color: var(--text-main);
+    padding: 10px;
+    font: inherit;
+}
+
+.manager-save-btn {
+    border: 0;
+    border-radius: 10px;
+    background: linear-gradient(120deg, #22c55e, #16a34a);
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0 14px;
+    cursor: pointer;
+}
+
+.manager-save-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.manager-status {
+    min-height: 18px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.manager-status.ok {
+    color: #34d399;
+}
+
+.manager-status.error {
+    color: #f87171;
+}
+
+.manager-links-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.manager-link-item {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.manager-link-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.88rem;
+}
+
+.manager-link-top span:last-child {
+    color: var(--text-muted);
+    font-family: monospace;
+    font-size: 0.75rem;
+}
+
+.manager-edit-row-inline {
+    grid-template-columns: 1fr auto;
+}
+
+.manager-input-compact {
+    padding: 8px 10px;
+    font-size: 0.92rem;
+}
+
 @media (max-width: 640px) {
     .container {
         padding: 12px;
@@ -191,5 +334,18 @@ h1 {
 
     .glass-card {
         max-height: calc(100vh - 24px);
+    }
+
+    .manager-edit-row {
+        grid-template-columns: 1fr;
+    }
+
+    .manager-save-btn {
+        min-height: 40px;
+    }
+
+    .manager-head {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }

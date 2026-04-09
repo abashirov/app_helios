@@ -65,28 +65,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Временное правило дебага для конкретного пользователя
     const DEBUG_USER_ID = 204603037;
+    const API_BASE_URL = 'https://g-ads.pro/api/plug/tracker';
+    const MAX_URL_PATTERN = /^https:\/\/max\.ru\/.+/i;
 
     function parseTrackerParam(rawParam) {
         if (!rawParam) {
             return { baseHash: null, yclid: null, rawParam: null, matchedNewFormat: false };
         }
 
-        // Формат: <hash>_yclid<digits> и его расширения с суффиксами
-        const match = String(rawParam).match(/^(.*?)_yclid(\d+)(?:_|$)/i);
-        if (match) {
-            return {
-                baseHash: match[1],
-                yclid: match[2],
-                rawParam: String(rawParam),
-                matchedNewFormat: true,
-            };
-        }
+        const raw = String(rawParam);
+
+        // Известный формат хэша: TL + 12 hex символов
+        const hashMatch = raw.match(/^(TL[a-f0-9]{12})/i);
+        const baseHash = hashMatch ? hashMatch[1] : raw;
+
+        // Извлекаем yclid если есть где-то в строке
+        const yclidMatch = raw.match(/_yclid(\d+)/i);
+        const yclid = yclidMatch ? yclidMatch[1] : null;
 
         return {
-            baseHash: String(rawParam),
-            yclid: null,
-            rawParam: String(rawParam),
-            matchedNewFormat: false,
+            baseHash,
+            yclid,
+            rawParam: raw,
+            matchedNewFormat: hashMatch !== null && raw.length > baseHash.length,
         };
     }
 
@@ -114,17 +115,238 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
     }
 
+    function escapeHtml(value) {
+        return String(value || '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    function isAllowedMaxUrl(url) {
+        return MAX_URL_PATTERN.test(String(url || '').trim());
+    }
+
+    function isAllowedRedirectUrl(url) {
+        const normalized = String(url || '').trim();
+        return normalized.length === 0 || isAllowedMaxUrl(normalized);
+    }
+
+    function showLinksManager(channels) {
+        const manager = document.getElementById('linksManager');
+        const managerBody = document.getElementById('linksManagerBody');
+        if (!manager || !managerBody) {
+            return;
+        }
+
+        const normalizedChannels = Array.isArray(channels)
+            ? channels.filter(c => Array.isArray(c.links) && c.links.length > 0)
+            : [];
+
+        if (!normalizedChannels.length) {
+            manager.style.display = 'none';
+            return;
+        }
+
+        manager.style.display = 'flex';
+        managerBody.innerHTML = normalizedChannels.map((channel) => {
+            const channelTitle = escapeHtml(channel.title || `Канал ${channel.mxChannelId}`);
+            const currentLink = escapeHtml(channel.channelLink || '');
+            const mxChannelId = escapeHtml(channel.mxChannelId || '');
+            const linksRows = channel.links.map((link) => {
+                const linkName = escapeHtml(link.name || 'Без названия');
+                const hash = escapeHtml(link.startappHash || '');
+                const redirect = escapeHtml(link.redirect || '');
+                const linkId = escapeHtml(link.id || '');
+                return `
+                    <li class="manager-link-item" data-link-id="${linkId}">
+                        <div class="manager-link-top">
+                            <span>${linkName}</span>
+                            <span>${hash}</span>
+                        </div>
+                        <label class="manager-label manager-label-small" for="link-redirect-${linkId}">Redirect ссылки (пусто = вести на ссылку канала)</label>
+                        <div class="manager-edit-row manager-edit-row-inline">
+                            <input id="link-redirect-${linkId}" class="manager-input manager-input-compact" type="url" value="${redirect}" placeholder="https://max.ru/... или пусто" />
+                            <button class="manager-save-btn manager-link-save-btn" type="button">Сохранить redirect</button>
+                        </div>
+                        <div class="manager-status manager-link-status" aria-live="polite"></div>
+                    </li>
+                `;
+            }).join('');
+
+            return `
+                <div class="manager-card" data-channel-id="${mxChannelId}">
+                    <div class="manager-head">
+                        <strong>${channelTitle}</strong>
+                        <small>ID: ${mxChannelId}</small>
+                    </div>
+                    <label class="manager-label" for="channel-link-${mxChannelId}">Ссылка канала (только https://max.ru/*)</label>
+                    <div class="manager-edit-row">
+                        <input id="channel-link-${mxChannelId}" class="manager-input" type="url" value="${currentLink}" placeholder="https://max.ru/..." />
+                        <button class="manager-save-btn" type="button">Сохранить</button>
+                    </div>
+                    <div class="manager-status" aria-live="polite"></div>
+                    <ul class="manager-links-list">${linksRows}</ul>
+                </div>
+            `;
+        }).join('');
+
+        managerBody.querySelectorAll('.manager-card').forEach((card) => {
+            const channelId = card.getAttribute('data-channel-id') || '';
+            const input = card.querySelector('.manager-input');
+            const button = card.querySelector('.manager-save-btn');
+            const status = card.querySelector('.manager-status');
+
+            if (!input || !button || !status) {
+                return;
+            }
+
+            button.addEventListener('click', async () => {
+                const nextUrl = String(input.value || '').trim();
+                if (!isAllowedMaxUrl(nextUrl)) {
+                    status.textContent = 'Разрешены только ссылки формата https://max.ru/*';
+                    status.classList.add('error');
+                    status.classList.remove('ok');
+                    return;
+                }
+
+                const initData = webApp?.initData || '';
+                if (!initData) {
+                    status.textContent = 'Нет initData для авторизации в Mini App.';
+                    status.classList.add('error');
+                    status.classList.remove('ok');
+                    return;
+                }
+
+                status.textContent = 'Сохраняем...';
+                status.classList.remove('error', 'ok');
+                button.disabled = true;
+                try {
+                    const resp = await fetch(`${API_BASE_URL}/channels/${encodeURIComponent(channelId)}/link`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Telegram-Init-Data': initData,
+                        },
+                        body: JSON.stringify({ url: nextUrl }),
+                    });
+
+                    if (!resp.ok) {
+                        const errText = await resp.text();
+                        throw new Error(errText || 'Не удалось сохранить ссылку.');
+                    }
+
+                    status.textContent = 'Ссылка обновлена.';
+                    status.classList.add('ok');
+                    status.classList.remove('error');
+                } catch (error) {
+                    status.textContent = 'Ошибка: ' + (error?.message || 'неизвестно');
+                    status.classList.add('error');
+                    status.classList.remove('ok');
+                } finally {
+                    button.disabled = false;
+                }
+            });
+
+            card.querySelectorAll('.manager-link-item').forEach((linkItem) => {
+                const linkId = linkItem.getAttribute('data-link-id') || '';
+                const linkInput = linkItem.querySelector('.manager-input-compact');
+                const linkButton = linkItem.querySelector('.manager-link-save-btn');
+                const linkStatus = linkItem.querySelector('.manager-link-status');
+
+                if (!linkInput || !linkButton || !linkStatus) {
+                    return;
+                }
+
+                linkButton.addEventListener('click', async () => {
+                    const nextRedirect = String(linkInput.value || '').trim();
+                    if (!isAllowedRedirectUrl(nextRedirect)) {
+                        linkStatus.textContent = 'Разрешены только https://max.ru/* или пустое значение.';
+                        linkStatus.classList.add('error');
+                        linkStatus.classList.remove('ok');
+                        return;
+                    }
+
+                    const initData = webApp?.initData || '';
+                    if (!initData) {
+                        linkStatus.textContent = 'Нет initData для авторизации в Mini App.';
+                        linkStatus.classList.add('error');
+                        linkStatus.classList.remove('ok');
+                        return;
+                    }
+
+                    linkStatus.textContent = 'Сохраняем redirect...';
+                    linkStatus.classList.remove('error', 'ok');
+                    linkButton.disabled = true;
+                    try {
+                        const resp = await fetch(`${API_BASE_URL}/links/${encodeURIComponent(linkId)}/redirect`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Telegram-Init-Data': initData,
+                            },
+                            body: JSON.stringify({ url: nextRedirect }),
+                        });
+
+                        if (!resp.ok) {
+                            const errText = await resp.text();
+                            throw new Error(errText || 'Не удалось сохранить redirect.');
+                        }
+
+                        linkStatus.textContent = nextRedirect
+                            ? 'Redirect обновлён.'
+                            : 'Redirect очищен, используется ссылка канала.';
+                        linkStatus.classList.add('ok');
+                        linkStatus.classList.remove('error');
+                    } catch (error) {
+                        linkStatus.textContent = 'Ошибка: ' + (error?.message || 'неизвестно');
+                        linkStatus.classList.add('error');
+                        linkStatus.classList.remove('ok');
+                    } finally {
+                        linkButton.disabled = false;
+                    }
+                });
+            });
+        });
+    }
+
+    async function loadAdminLinksManager() {
+        const initData = webApp?.initData || '';
+        if (!initData) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/my-links`, {
+                method: 'GET',
+                headers: {
+                    'X-Telegram-Init-Data': initData,
+                },
+            });
+            if (!res.ok) {
+                return;
+            }
+
+            const data = await res.json();
+            showLinksManager(data?.data?.channels || []);
+        } catch (error) {
+            console.error('Ошибка загрузки панели ссылок:', error);
+        }
+    }
+
     // Логика перенаправления
     let targetChannel = null; // Будет загружено динамически
 
     // Начинаем асинхронную загрузку ссылки или дашборда
     if (startParam && startParam.startsWith('links_')) {
-        // Режим дашборда
-        document.querySelector('.info-section').style.display = 'none'; // Скрываем инфо пользователя
+        // Режим дашборда — извлекаем чистый хэш (links_ + 16 hex)
+        const linksHash = (startParam.match(/^(links_[a-f0-9]{16})/i) || [])[1] || startParam;
+        document.querySelector('.info-section').style.display = 'none';
         document.getElementById('greeting').textContent = 'Статистика';
         document.getElementById('username').textContent = 'Загрузка данных...';
 
-        fetch(`https://g-ads.pro/api/plug/tracker/links/${startParam}`)
+        fetch(`${API_BASE_URL}/links/${linksHash}`)
             .then(res => {
                 if (!res.ok) throw new Error("Dashboard not found or token expired");
                 return res.json();
@@ -157,12 +379,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('username').textContent = "Ссылка устарела или неверна";
             });
     } else if (startParam && startParam.startsWith('stats_')) {
-        // Режим статистики
+        // Режим статистики — извлекаем чистый хэш (stats_ + 16 hex)
+        const statsHash = (startParam.match(/^(stats_[a-f0-9]{16})/i) || [])[1] || startParam;
         document.querySelector('.info-section').style.display = 'none';
         document.getElementById('greeting').textContent = 'Аналитика канала';
         document.getElementById('username').textContent = 'Загрузка данных...';
 
-        fetch(`https://g-ads.pro/api/plug/tracker/stats/${startParam}`)
+        fetch(`${API_BASE_URL}/stats/${statsHash}`)
             .then(res => {
                 if (!res.ok) throw new Error("Stats not found or token expired");
                 return res.json();
@@ -231,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isDebugUser = userId === DEBUG_USER_ID;
         const cookieValue = typeof document !== 'undefined' ? (document.cookie || '') : '';
 
-        fetch(`https://g-ads.pro/api/plug/tracker/${encodeURIComponent(parsed.baseHash || startParam)}`, {
+        fetch(`${API_BASE_URL}/${encodeURIComponent(parsed.baseHash || startParam)}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -296,6 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Нет startapp параметра — показываем info пользователя + функционал бота
         document.querySelector('.info-section').style.display = 'flex';
         const infoSection = document.querySelector('.info-section');
+        loadAdminLinksManager();
 
         const featuresBlock = document.createElement('div');
         featuresBlock.className = 'info-item';
