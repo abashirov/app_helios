@@ -67,6 +67,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const DEBUG_USER_ID = 204603037;
     const API_BASE_URL = 'https://g-ads.pro/api/plug/tracker';
     const MAX_URL_PATTERN = /^https:\/\/max\.ru\/.+/i;
+    let mainTabsInitialized = false;
+    let linksTabLoaded = false;
+
+    function initMainTabs() {
+        if (mainTabsInitialized) {
+            return;
+        }
+
+        const tabsRoot = document.getElementById('appTabs');
+        if (!tabsRoot) {
+            return;
+        }
+
+        const tabButtons = Array.from(tabsRoot.querySelectorAll('.tab-btn'));
+        const tabPageMap = {
+            home: document.getElementById('homePage'),
+            links: document.getElementById('linksManager'),
+            stats: document.getElementById('statsPage'),
+            access: document.getElementById('accessPage'),
+        };
+
+        const setTab = (tabName) => {
+            tabButtons.forEach((btn) => {
+                const isActive = btn.getAttribute('data-tab') === tabName;
+                btn.classList.toggle('active', isActive);
+            });
+
+            Object.entries(tabPageMap).forEach(([name, page]) => {
+                if (!page) {
+                    return;
+                }
+                page.style.display = name === tabName ? 'flex' : 'none';
+            });
+
+            if (tabName === 'links' && !linksTabLoaded) {
+                linksTabLoaded = true;
+                loadAdminLinksManager();
+            }
+        };
+
+        tabButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                setTab(btn.getAttribute('data-tab') || 'home');
+            });
+        });
+
+        tabsRoot.style.display = 'grid';
+        mainTabsInitialized = true;
+        setTab('home');
+    }
 
     function parseTrackerParam(rawParam) {
         if (!rawParam) {
@@ -513,9 +563,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     } else {
         // Нет startapp параметра — показываем info пользователя + функционал бота
-        document.querySelector('.info-section').style.display = 'flex';
-        const infoSection = document.querySelector('.info-section');
-        loadAdminLinksManager();
+        const infoSection = document.getElementById('homePage');
+        if (!infoSection) {
+            return;
+        }
+
+        infoSection.style.display = 'flex';
+        initMainTabs();
 
         const featuresBlock = document.createElement('div');
         featuresBlock.className = 'info-item';

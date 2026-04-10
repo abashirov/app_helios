@@ -22,7 +22,14 @@
                 <p id="username" class="subtitle">Загрузка данных...</p>
             </div>
 
-            <div class="info-section">
+            <div id="appTabs" class="tabs-nav" style="display: none;">
+                <button class="tab-btn active" data-tab="home" type="button">Главная</button>
+                <button class="tab-btn" data-tab="links" type="button">Ссылки</button>
+                <button class="tab-btn" data-tab="stats" type="button">Статистика</button>
+                <button class="tab-btn" data-tab="access" type="button">Доступ</button>
+            </div>
+
+            <div id="homePage" class="info-section page-content">
                 <div class="info-item">
                     <span class="label">ID Пользователя:</span>
                     <span class="val" id="userId">-</span>
@@ -41,10 +48,20 @@
                 <div id="linksContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
             </div>
 
-            <div id="linksManager" class="info-section links-manager" style="display: none; margin-top: 12px;">
+            <div id="linksManager" class="info-section links-manager page-content" style="display: none; margin-top: 12px;">
                 <h2 class="manager-title">Ссылки каналов</h2>
                 <p class="manager-subtitle">Доступно для каналов, где вы являетесь администратором.</p>
                 <div id="linksManagerBody" class="links-manager-body"></div>
+            </div>
+
+            <div id="statsPage" class="info-section page-content placeholder-page" style="display: none; margin-top: 12px;">
+                <h2 class="placeholder-title">Статистика</h2>
+                <p class="placeholder-text">Раздел в разработке</p>
+            </div>
+
+            <div id="accessPage" class="info-section page-content placeholder-page" style="display: none; margin-top: 12px;">
+                <h2 class="placeholder-title">Управление доступом</h2>
+                <p class="placeholder-text">Раздел в разработке</p>
             </div>
 
 
